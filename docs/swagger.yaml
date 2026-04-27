@@ -1,0 +1,375 @@
+openapi: 3.0.3
+info:
+  title: Teraid Pay API
+  version: 1.0.0
+  description: 決済 API の Swagger 定義。
+servers:
+  - url: http://localhost:8005
+    description: ローカル開発環境
+
+tags:
+  - name: Payment
+    description: 決済操作
+
+paths:
+  /payment/request:
+    post:
+      tags:
+        - Payment
+      summary: 決済リクエスト作成
+      operationId: createPaymentRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentCreateRequest'
+            examples:
+              default:
+                value:
+                  store_id: 101
+                  user_id: 201
+                  amount: 1500
+      responses:
+        '200':
+          description: 決済リクエスト作成に成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentCreateWrappedResponse'
+              examples:
+                success:
+                  value:
+                    status: success
+                    data:
+                      payment_request_id: 501
+                      from_wallet_address: 0x1111111111111111111111111111111111111111
+                      to_wallet_address: 0x2222222222222222222222222222222222222222
+                      amount: 1500
+                      token_symbol: JPYC
+                      chain_id: 11155111
+                      expires_at: '2026-04-12 12:10'
+        '400':
+          description: 店舗ウォレットとユーザーウォレットの決済条件が一致しない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: ウォレットが存在しない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /payment/request/{payment_request_id}/tx:
+    post:
+      tags:
+        - Payment
+      summary: トランザクションハッシュ登録
+      operationId: addPaymentTransactionHash
+      parameters:
+        - name: payment_request_id
+          in: path
+          required: true
+          description: 決済リクエストID
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentTransactionHashRequest'
+            examples:
+              default:
+                value:
+                  transaction_hash: 0xabcdef1234567890
+      responses:
+        '200':
+          description: トランザクションハッシュ登録に成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentTransactionHashWrappedResponse'
+              examples:
+                success:
+                  value:
+                    status: success
+                    data:
+                      payment_request_id: 501
+                      transaction_hash: 0xabcdef1234567890
+        '404':
+          description: 決済リクエストが存在しない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /payment/request/{payment_request_id}/verify:
+    post:
+      tags:
+        - Payment
+      summary: トランザクション検証
+      operationId: verifyPaymentTransactionHash
+      parameters:
+        - name: payment_request_id
+          in: path
+          required: true
+          description: 決済リクエストID
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: トランザクション検証に成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentVerifyWrappedResponse'
+              examples:
+                paid:
+                  summary: 支払い完了
+                  value:
+                    status: success
+                    data:
+                      payment_request_id: 501
+                      status: paid
+                confirming:
+                  summary: 承認待ち
+                  value:
+                    status: success
+                    data:
+                      payment_request_id: 501
+                      status: confirming
+                failed:
+                  summary: 検証失敗
+                  value:
+                    status: success
+                    data:
+                      payment_request_id: 501
+                      status: verify_failed
+        '404':
+          description: 決済リクエストまたはトランザクションハッシュが存在しない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    PaymentCreateRequest:
+      type: object
+      required:
+        - store_id
+        - user_id
+        - amount
+      properties:
+        store_id:
+          type: integer
+          minimum: 1
+          description: 店舗ID
+        user_id:
+          type: integer
+          minimum: 1
+          description: ユーザーID
+        amount:
+          type: integer
+          minimum: 1
+          description: 送金額
+
+    PaymentTransactionHashRequest:
+      type: object
+      required:
+        - transaction_hash
+      properties:
+        transaction_hash:
+          type: string
+          minLength: 1
+          description: トランザクションハッシュ
+
+    PaymentCreate:
+      type: object
+      required:
+        - payment_request_id
+        - from_wallet_address
+        - to_wallet_address
+        - amount
+        - token_symbol
+        - chain_id
+        - expires_at
+      properties:
+        payment_request_id:
+          type: integer
+          description: 決済リクエストID
+        from_wallet_address:
+          type: string
+          description: 送信元ウォレットアドレス
+        to_wallet_address:
+          type: string
+          description: 送信先ウォレットアドレス
+        amount:
+          type: integer
+          description: 送金額
+        token_symbol:
+          type: string
+          description: トークンシンボル
+        chain_id:
+          type: integer
+          description: チェーンID
+        expires_at:
+          type: string
+          description: 決済リクエストの有効期限日時
+
+    PaymentTransactionHash:
+      type: object
+      required:
+        - payment_request_id
+        - transaction_hash
+      properties:
+        payment_request_id:
+          type: integer
+          description: 決済リクエストID
+        transaction_hash:
+          type: string
+          description: トランザクションハッシュ
+
+    PaymentVerify:
+      type: object
+      required:
+        - payment_request_id
+        - status
+      properties:
+        payment_request_id:
+          type: integer
+          description: 決済リクエストID
+        status:
+          type: string
+          enum:
+            - requested
+            - submitted
+            - confirming
+            - paid
+            - tx_failed
+            - verify_failed
+            - canceled
+            - error
+          description: 決済ステータス
+
+    PaymentCreateWrappedResponse:
+      type: object
+      required:
+        - status
+        - data
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          $ref: '#/components/schemas/PaymentCreate'
+
+    PaymentTransactionHashWrappedResponse:
+      type: object
+      required:
+        - status
+        - data
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          $ref: '#/components/schemas/PaymentTransactionHash'
+
+    PaymentVerifyWrappedResponse:
+      type: object
+      required:
+        - status
+        - data
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          $ref: '#/components/schemas/PaymentVerify'
+
+    ErrorDetail:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          enum: [error]
+        message:
+          type: string
+          description: エラーメッセージ
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          $ref: '#/components/schemas/ErrorDetail'
+
+    ValidationError:
+      type: object
+      properties:
+        loc:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string
+
+    ValidationErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'

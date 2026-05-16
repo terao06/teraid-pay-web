@@ -1,36 +1,162 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Teraid Pay Web
 
-## Getting Started
+Teraid Pay の決済リクエストを作成し、決済実行後に検証結果をポーリングして表示する Next.js アプリケーションです。
 
-First, run the development server:
+## 技術スタック
+
+- Next.js 16.2.4
+- React 19.2.4
+- TypeScript 5
+- Tailwind CSS 4
+- ESLint 9
+
+このプロジェクトは Next.js App Router 構成です。画面は `app/page.tsx` を起点に実装されています。
+
+## 機能仕様
+
+トップページ `/` に決済フォームを表示します。
+
+フォーム項目:
+
+- `store_id`: 店舗 ID。数値、必須、最小値 1。
+- `user_id`: ユーザー ID。数値、必須、最小値 1。
+- `amount`: 決済金額。数値、必須、最小値 1。
+
+送信時の処理:
+
+1. `POST /payment/request` で決済リクエストを作成します。
+2. 作成された `payment_request_id` を使って `POST /payment/request/{payment_request_id}/execute` を呼び出します。
+3. `POST /payment/request/{payment_request_id}/verify` を 3 秒間隔で呼び出し、決済ステータスを確認します。
+4. 終了ステータスになるまで処理中オーバーレイを表示します。
+5. 結果に応じて成功または失敗ダイアログを表示します。
+
+終了ステータス:
+
+- `paid`
+- `tx_failed`
+- `verify_failed`
+- `canceled`
+- `error`
+
+成功条件:
+
+- `verify` の結果が `paid` の場合、成功ダイアログを表示します。
+
+失敗条件:
+
+- `paid` 以外の終了ステータスの場合、失敗ダイアログを表示します。
+- API エラーまたは通信エラーが発生した場合、失敗ダイアログを表示します。
+
+## API 仕様
+
+フロントエンドは `NEXT_PUBLIC_TERAID_PAY_API` で指定した Teraid Pay API に接続します。未設定の場合は `http://localhost:8005` を使用します。
+
+TERAID_PAY_API のソースコードは [terao06/teraid-pay-api](https://github.com/terao06/teraid-pay-api) にあります。
+
+OpenAPI 定義は [docs/swagger.yaml](docs/swagger.yaml) にあります。
+
+### `POST /payment/request`
+
+決済リクエストを作成します。
+
+リクエスト例:
+
+```json
+{
+  "store_id": 101,
+  "user_id": 201,
+  "amount": 1500
+}
+```
+
+レスポンスの `data` には主に以下が含まれます。
+
+- `payment_request_id`
+- `from_wallet_address`
+- `to_wallet_address`
+- `amount`
+- `chain_id`
+
+### `POST /payment/request/{payment_request_id}/execute`
+
+作成済みの決済リクエストを実行します。
+
+レスポンスの `data` には主に以下が含まれます。
+
+- `payment_request_id`
+- `transaction_hash`
+
+### `POST /payment/request/{payment_request_id}/verify`
+
+決済トランザクションを検証し、決済ステータスを返します。
+
+ステータス:
+
+- `requested`
+- `submitted`
+- `confirming`
+- `paid`
+- `tx_failed`
+- `verify_failed`
+- `canceled`
+- `error`
+
+## 環境変数
+
+`.env.development` に以下の値が定義されています。
+
+| 変数名 | 用途 |
+| --- | --- |
+| `NEXT_PUBLIC_TERAID_PAY_API` | Teraid Pay API のベース URL。未設定時は `http://localhost:8005`。 |
+| `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` | WalletConnect の Project ID。現在のフロント実装では未使用。 |
+| `NEXT_PUBLIC_RPC_URL_ETHEREUM_MAINNET` | Ethereum mainnet RPC URL。現在のフロント実装では未使用。 |
+| `NEXT_PUBLIC_RPC_URL_ETHEREUM_SEPOLIA` | Ethereum Sepolia RPC URL。現在のフロント実装では未使用。 |
+| `NEXT_PUBLIC_RPC_URL_POLYGON_MAINNET` | Polygon mainnet RPC URL。現在のフロント実装では未使用。 |
+| `NEXT_PUBLIC_RPC_URL_POLYGON_AMOY` | Polygon Amoy RPC URL。現在のフロント実装では未使用。 |
+| `NEXT_PUBLIC_JPYC_TOKEN_ADDRESS_ETHEREUM_SEPOLIA` | Ethereum Sepolia 上の JPYC トークンアドレス。現在のフロント実装では未使用。 |
+
+## セットアップ
+
+依存関係をインストールします。
+
+```bash
+npm install
+```
+
+開発サーバーを起動します。
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+ブラウザで `http://localhost:3000` を開きます。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+API は別途 `NEXT_PUBLIC_TERAID_PAY_API` の URL で起動している必要があります。デフォルトでは `http://localhost:8005` です。
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## スクリプト
 
-## Learn More
+| コマンド | 内容 |
+| --- | --- |
+| `npm run dev` | Next.js 開発サーバーを起動します。 |
+| `npm run build` | 本番ビルドを作成します。 |
+| `npm run start` | 本番ビルドを起動します。 |
+| `npm run lint` | ESLint を実行します。 |
 
-To learn more about Next.js, take a look at the following resources:
+## ディレクトリ構成
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```text
+app/
+  components/
+    PaymentForm.tsx          決済フォーム
+    PaymentResultDialog.tsx  決済結果ダイアログ
+    ProcessingOverlay.tsx    処理中オーバーレイ
+  types/
+    payment.ts               決済 API の型定義
+  globals.css                グローバル CSS
+  layout.tsx                 ルートレイアウト
+  page.tsx                   トップページと決済フロー
+docs/
+  swagger.yaml               Teraid Pay API の OpenAPI 定義
+public/
+  *.svg                      Next.js 初期生成の静的アセット
+```

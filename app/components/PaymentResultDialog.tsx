@@ -2,9 +2,10 @@ import type { Toast } from "@/app/types/payment";
 
 type PaymentResultDialogProps = {
   toast: Toast;
+  durationMs: number;
 };
 
-export function PaymentResultDialog({ toast }: PaymentResultDialogProps) {
+export function PaymentResultDialog({ toast, durationMs }: PaymentResultDialogProps) {
   const isSuccess = toast.kind === "success";
 
   return (
@@ -14,7 +15,12 @@ export function PaymentResultDialog({ toast }: PaymentResultDialogProps) {
       className="fixed inset-0 z-30 grid place-items-center bg-zinc-950/70 px-4 backdrop-blur-sm"
     >
       <div className="w-full max-w-sm overflow-hidden rounded-lg border border-zinc-200 bg-white text-center text-zinc-950 shadow-2xl shadow-black/30">
-        <div className={`h-2 ${isSuccess ? "bg-emerald-500" : "bg-red-500"}`} />
+        <div className="h-2 bg-zinc-100">
+          <div
+            className={`h-full origin-right animate-result-timer ${isSuccess ? "bg-emerald-500" : "bg-red-500"}`}
+            style={{ animationDuration: `${durationMs}ms` }}
+          />
+        </div>
         <div className="grid place-items-center px-6 py-8">
           <div
             className={`grid size-24 place-items-center rounded-full border-8 ${

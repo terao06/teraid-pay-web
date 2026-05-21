@@ -24,3 +24,19 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@keyframes result-timer {
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.animate-result-timer {
+  animation-name: result-timer;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}

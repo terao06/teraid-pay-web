@@ -4,6 +4,12 @@ export type PaymentCreateRequest = {
   amount: number;
 };
 
+export type PaymentCreateFromFaceRequest = {
+  store_id: number;
+  content: string;
+  amount: number;
+};
+
 export type PaymentTransactionHash = {
   payment_request_id: number;
   transaction_hash: string;

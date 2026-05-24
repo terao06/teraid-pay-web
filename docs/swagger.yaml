@@ -69,6 +69,64 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /payment/request/with/face:
+    post:
+      tags:
+        - Payment
+      summary: 顔画像による決済リクエスト作成・実行
+      description: 顔画像からユーザーを特定し、決済リクエストを作成して決済を実行する。
+      operationId: createAndExecutePaymentFromFace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentCreateFromFaceRequest'
+            examples:
+              default:
+                value:
+                  store_id: 101
+                  content: iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB
+                  amount: 1500
+      responses:
+        '200':
+          description: 顔画像による決済リクエスト作成・実行に成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentTransactionHashWrappedResponse'
+              examples:
+                success:
+                  value:
+                    status: success
+                    data:
+                      payment_request_id: 502
+                      transaction_hash: 0xfaceabcdef123456
+        '400':
+          description: 顔画像の検出に失敗、または店舗ウォレットとユーザーウォレットの決済条件が一致しない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 顔画像、ユーザー、ウォレット、または決済情報が存在しない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /payment/request/{payment_request_id}/verify:
     post:
       tags:
@@ -156,6 +214,27 @@ components:
           type: integer
           minimum: 1
           description: ユーザーID
+        amount:
+          type: integer
+          minimum: 1
+          description: 送金額
+
+    PaymentCreateFromFaceRequest:
+      type: object
+      required:
+        - store_id
+        - content
+        - amount
+      properties:
+        store_id:
+          type: integer
+          minimum: 1
+          description: 店舗ID
+        content:
+          type: string
+          format: byte
+          maxLength: 5000
+          description: Base64 エンコードされた顔画像
         amount:
           type: integer
           minimum: 1

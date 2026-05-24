@@ -22,6 +22,8 @@ Teraid Pay の決済リクエストを作成し、決済実行後に検証結果
 - `user_id`: ユーザー ID。数値、必須、最小値 1。
 - `amount`: 決済金額。数値、必須、最小値 1。
 
+プロトタイプ用の制約として、`store_id` と `user_id` は `104` のみ利用できます。その他の ID は利用できません。
+
 送信時の処理:
 
 1. `POST /payment/request` で決済リクエストを作成します。
@@ -55,6 +57,13 @@ TERAID_PAY_API のソースコードは [terao06/teraid-pay-api](https://github.
 
 OpenAPI 定義は [docs/swagger.yaml](docs/swagger.yaml) にあります。
 
+関連する画面のソースコード:
+
+- store のウォレットを設定する画面: [terao06/teraid-pay-admin](https://github.com/terao06/teraid-pay-admin)
+- user のウォレットを設定する画面: [terao06/teraid-pay-user](https://github.com/terao06/teraid-pay-user)
+
+プロトタイプ用の制約として、`store_id` と `user_id` は `104` のみ設定されています。その他の ID は利用できません。
+
 ### `POST /payment/request`
 
 決済リクエストを作成します。
@@ -63,8 +72,8 @@ OpenAPI 定義は [docs/swagger.yaml](docs/swagger.yaml) にあります。
 
 ```json
 {
-  "store_id": 101,
-  "user_id": 201,
+  "store_id": 104,
+  "user_id": 104,
   "amount": 1500
 }
 ```
@@ -108,6 +117,7 @@ OpenAPI 定義は [docs/swagger.yaml](docs/swagger.yaml) にあります。
 | 変数名 | 用途 |
 | --- | --- |
 | `NEXT_PUBLIC_TERAID_PAY_API` | Teraid Pay API のベース URL。未設定時は `http://localhost:8005`。 |
+| `NEXT_PUBLIC_FACE_PAYMENT_REQUIRED_VISIBLE_MS` | 顔認証決済で顔が映り続ける必要がある時間。ミリ秒指定。未設定時は `3000`。 |
 | `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` | WalletConnect の Project ID。現在のフロント実装では未使用。 |
 | `NEXT_PUBLIC_RPC_URL_ETHEREUM_MAINNET` | Ethereum mainnet RPC URL。現在のフロント実装では未使用。 |
 | `NEXT_PUBLIC_RPC_URL_ETHEREUM_SEPOLIA` | Ethereum Sepolia RPC URL。現在のフロント実装では未使用。 |
@@ -160,3 +170,27 @@ docs/
 public/
   *.svg                      Next.js 初期生成の静的アセット
 ```
+
+## 画面イメージ
+### ユーザーIDベース決済
+#### 決済初期画面
+![決済初期画面](images/use_id/init.png)
+
+#### 決済中ダイアログ
+![決済中ダイアログ](images/use_id/payment_request.png)
+
+#### 決済完了ダイアログ
+![決済完了ダイアログ](images/use_id/payed_result.png)
+
+### 顔認証ベース決済
+#### 決済初期画面
+![決済初期画面](images/use_face/init.png)
+
+#### 顔認証画面
+![顔認証画面](images/use_face/face_search.png)
+
+#### 決済中ダイアログ
+![決済中ダイアログ](images/use_face/start_transaction.png)
+
+#### 決済完了ダイアログ
+![決済完了ダイアログ](images/use_face/payed_result.png)

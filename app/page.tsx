@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { PaymentForm } from "@/app/components/PaymentForm";
 import { PaymentResultDialog } from "@/app/components/PaymentResultDialog";
@@ -89,7 +90,12 @@ export default function Home() {
       {toast && <PaymentResultDialog toast={toast} durationMs={toastDurationMs} />}
 
       <section className="mx-auto grid max-w-3xl gap-5">
-        <h1 className="text-2xl font-semibold">Teraid Pay</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-semibold">Teraid Pay</h1>
+          <Link href="/face-payment" className="rounded-md border border-zinc-700 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-900">
+            顔認証決済へ
+          </Link>
+        </div>
         <PaymentForm processing={processing} onSubmit={submit} />
       </section>
     </main>

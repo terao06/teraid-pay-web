@@ -10,11 +10,13 @@ Teraid Pay の決済リクエストを作成し、決済実行後に検証結果
 - Tailwind CSS 4
 - ESLint 9
 
-このプロジェクトは Next.js App Router 構成です。画面は `app/page.tsx` を起点に実装されています。
+このプロジェクトは Next.js App Router 構成です。ユーザーID決済は `app/page.tsx`、顔認証決済は `app/face-payment/page.tsx` を起点に実装されています。
 
 ## 機能仕様
 
-トップページ `/` に決済フォームを表示します。
+### ユーザーIDベース決済
+
+トップページ `/` にユーザーIDベースの決済フォームを表示します。
 
 フォーム項目:
 
@@ -26,11 +28,10 @@ Teraid Pay の決済リクエストを作成し、決済実行後に検証結果
 
 送信時の処理:
 
-1. `POST /payment/request` で決済リクエストを作成します。
-2. 作成された `payment_request_id` を使って `POST /payment/request/{payment_request_id}/execute` を呼び出します。
-3. `POST /payment/request/{payment_request_id}/verify` を 3 秒間隔で呼び出し、決済ステータスを確認します。
-4. 終了ステータスになるまで処理中オーバーレイを表示します。
-5. 結果に応じて成功または失敗ダイアログを表示します。
+1. `POST /payment/request` で決済リクエストを作成・実行します。
+2. 作成された `payment_request_id` を使って `POST /payment/request/{payment_request_id}/verify` を 3 秒間隔で呼び出し、決済ステータスを確認します。
+3. 終了ステータスになるまで処理中オーバーレイを表示します。
+4. 結果に応じて成功または失敗ダイアログを表示します。
 
 終了ステータス:
 
@@ -49,6 +50,36 @@ Teraid Pay の決済リクエストを作成し、決済実行後に検証結果
 - `paid` 以外の終了ステータスの場合、失敗ダイアログを表示します。
 - API エラーまたは通信エラーが発生した場合、失敗ダイアログを表示します。
 
+### 顔認証ベース決済
+
+`/face-payment` に顔認証ベースの決済フォームを表示します。トップページ `/` から「顔認証決済へ」ボタンで遷移できます。顔認証決済画面からは「ユーザーID決済へ」ボタンでトップページへ戻れます。
+
+フォーム項目:
+
+- `store_id`: 店舗 ID。数値、必須、最小値 1。
+- `amount`: 決済金額。数値、必須、最小値 1。
+
+送信時の処理:
+
+1. `store_id` と `amount` を入力し、「顔認証開始」を押します。
+2. Web カメラ画面に切り替わります。
+3. カメラ映像上の中央枠内で顔検知します。
+4. 顔が `NEXT_PUBLIC_FACE_PAYMENT_REQUIRED_VISIBLE_MS` で指定した時間だけ映り続けた場合、中央枠内の画像を正方形に切り出します。
+5. 切り出した顔画像を JPEG として圧縮し、Base64 文字列が 5000 文字以下になるように調整します。
+6. Base64 文字列を `content` として `POST /payment/request/with/face` に送信します。
+7. 作成された `payment_request_id` を使って `POST /payment/request/{payment_request_id}/verify` を 3 秒間隔で呼び出し、決済ステータスを確認します。
+8. 終了ステータスになるまで処理中オーバーレイを表示します。
+9. 結果に応じて成功または失敗ダイアログを表示します。
+
+顔検知について:
+
+- `FaceDetector` API が利用できるブラウザでは、中央枠内の顔検知が連続して成立した場合だけ決済 API に進みます。
+- `FaceDetector` API が利用できないブラウザでは、Web カメラ表示後に `NEXT_PUBLIC_FACE_PAYMENT_REQUIRED_VISIBLE_MS` で指定した時間だけ待ち、中央枠内の画像を送信します。
+- サーバーへ送信する画像は、画面上の中央枠に対応する範囲を正方形に切り出したものです。
+- Base64 文字列には `data:image/jpeg;base64,` の接頭辞を含めません。
+
+成功条件と失敗条件はユーザーIDベース決済と同じです。
+
 ## API 仕様
 
 フロントエンドは `NEXT_PUBLIC_TERAID_PAY_API` で指定した Teraid Pay API に接続します。未設定の場合は `http://localhost:8005` を使用します。
@@ -66,7 +97,7 @@ OpenAPI 定義は [docs/swagger.yaml](docs/swagger.yaml) にあります。
 
 ### `POST /payment/request`
 
-決済リクエストを作成します。
+決済リクエストを作成して実行します。
 
 リクエスト例:
 
@@ -81,14 +112,27 @@ OpenAPI 定義は [docs/swagger.yaml](docs/swagger.yaml) にあります。
 レスポンスの `data` には主に以下が含まれます。
 
 - `payment_request_id`
-- `from_wallet_address`
-- `to_wallet_address`
-- `amount`
-- `chain_id`
+- `transaction_hash`
 
-### `POST /payment/request/{payment_request_id}/execute`
+### `POST /payment/request/with/face`
 
-作成済みの決済リクエストを実行します。
+顔画像からユーザーを特定し、決済リクエストを作成して決済を実行します。
+
+リクエスト例:
+
+```json
+{
+  "store_id": 104,
+  "content": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB",
+  "amount": 1500
+}
+```
+
+リクエスト項目:
+
+- `store_id`: 店舗 ID。数値、必須、最小値 1。
+- `content`: Base64 エンコードされた顔画像。必須、最大 5000 文字。
+- `amount`: 決済金額。数値、必須、最小値 1。
 
 レスポンスの `data` には主に以下が含まれます。
 
@@ -162,9 +206,11 @@ app/
     ProcessingOverlay.tsx    処理中オーバーレイ
   types/
     payment.ts               決済 API の型定義
+  face-payment/
+    page.tsx                 顔認証決済ページと決済フロー
   globals.css                グローバル CSS
   layout.tsx                 ルートレイアウト
-  page.tsx                   トップページと決済フロー
+  page.tsx                   ユーザーID決済ページと決済フロー
 docs/
   swagger.yaml               Teraid Pay API の OpenAPI 定義
 public/

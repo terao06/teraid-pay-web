@@ -45,7 +45,7 @@ export function PaymentResultDialog({ toast, durationMs }: PaymentResultDialogPr
               <span className="ml-1 text-lg font-semibold text-zinc-600">円</span>
             </p>
           )}
-          <p className="mt-4 text-base font-medium text-zinc-600">{toast.text}</p>
+          {toast.text && <p className="mt-4 text-base font-medium text-zinc-600">{toast.text}</p>}
         </div>
       </div>
     </div>

@@ -45,11 +45,30 @@ paths:
                       payment_request_id: 501
                       transaction_hash: 0xabcdef1234567890
         '400':
-          description: 店舗ウォレットとユーザーウォレットの決済条件が一致しない
+          description: 店舗ウォレットとユーザーウォレットの決済条件が一致しない、permit 未許可、または残高不足
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notMatch:
+                  summary: 決済条件不一致
+                  value:
+                    detail:
+                      status: error
+                      message: ウォレット情報が一致しませんでした。
+                walletNotPermitted:
+                  summary: permit 未許可
+                  value:
+                    detail:
+                      status: error
+                      message: ウォレットの permit 許可が完了していません。
+                insufficientFunds:
+                  summary: 残高不足
+                  value:
+                    detail:
+                      status: error
+                      message: 残高が不足しています。口座をご確認ください。
         '404':
           description: ウォレットが存在しない
           content:
@@ -103,11 +122,36 @@ paths:
                       payment_request_id: 502
                       transaction_hash: 0xfaceabcdef123456
         '400':
-          description: 顔画像の検出に失敗、または店舗ウォレットとユーザーウォレットの決済条件が一致しない
+          description: 顔画像の検出に失敗、店舗ウォレットとユーザーウォレットの決済条件が一致しない、permit 未許可、または残高不足
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                faceNotFound:
+                  summary: 顔検出失敗
+                  value:
+                    detail:
+                      status: error
+                      message: 顔が検出されませんでした。
+                notMatch:
+                  summary: 決済条件不一致
+                  value:
+                    detail:
+                      status: error
+                      message: ウォレット情報が一致しませんでした。
+                walletNotPermitted:
+                  summary: permit 未許可
+                  value:
+                    detail:
+                      status: error
+                      message: ウォレットの permit 許可が完了していません。
+                insufficientFunds:
+                  summary: 残高不足
+                  value:
+                    detail:
+                      status: error
+                      message: 残高が不足しています。口座をご確認ください。
         '404':
           description: 顔画像、ユーザー、ウォレット、または決済情報が存在しない
           content:
@@ -158,7 +202,7 @@ paths:
                       payment_request_id: 501
                       status: paid
                 confirming:
-                  summary: 承認待ち
+                  summary: 確認待ち
                   value:
                     status: success
                     data:

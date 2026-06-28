@@ -30,6 +30,6 @@ export type SuccessResponse<T> = {
 export type Toast = {
   kind: "success" | "error";
   title: string;
-  text: string;
+  text?: string;
   amount?: number;
 };

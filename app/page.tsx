@@ -11,6 +11,27 @@ const api = process.env.NEXT_PUBLIC_TERAID_PAY_API ?? "http://localhost:8005";
 const done = new Set<VerifyStatus>(["paid", "tx_failed", "verify_failed", "canceled", "error"]);
 const toastDurationMs = 3000;
 
+class ApiError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+function getApiErrorMessage(body: unknown) {
+  if (
+    typeof body === "object" &&
+    body !== null &&
+    "detail" in body &&
+    typeof body.detail === "object" &&
+    body.detail !== null &&
+    "message" in body.detail &&
+    typeof body.detail.message === "string"
+  ) {
+    return body.detail.message;
+  }
+}
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -35,7 +56,11 @@ export default function Home() {
       headers: { "content-type": "application/json", ...init?.headers },
     });
     const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw Error(body?.detail?.message ?? body?.detail?.[0]?.msg ?? `HTTP ${res.status}`);
+    if (!res.ok) {
+      const message = getApiErrorMessage(body);
+      if (message) throw new ApiError(message);
+      throw Error(`HTTP ${res.status}`);
+    }
     return body;
   }
 
@@ -77,8 +102,14 @@ export default function Home() {
           ? { kind: "success", title: "決済完了", text: "ありがとうございました", amount: body.amount }
           : { kind: "error", title: "決済に失敗しました", text: "支払い処理を完了できませんでした。" },
       );
-    } catch {
-      if (!cancelled.current) showToast({ kind: "error", title: "決済に失敗しました", text: "支払い処理を完了できませんでした。" });
+    } catch (error) {
+      if (!cancelled.current) {
+        showToast({
+          kind: "error",
+          title: error instanceof ApiError ? error.message : "決済に失敗しました",
+          text: error instanceof ApiError ? undefined : "支払い処理を完了できませんでした。",
+        });
+      }
     } finally {
       if (!cancelled.current) setProcessing(false);
     }

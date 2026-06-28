@@ -43,6 +43,60 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function describeCameraError(error: unknown, phase: string) {
+  const name = error instanceof Error ? error.name : typeof error;
+  const message = error instanceof Error ? error.message : String(error);
+  return `${phase} failed: ${name}${message ? ` (${message})` : ""}`;
+}
+
+function isNotReadableError(error: unknown) {
+  return error instanceof DOMException && error.name === "NotReadableError";
+}
+
+function waitForVideoMetadata(video: HTMLVideoElement) {
+  if (video.readyState >= HTMLMediaElement.HAVE_METADATA) return Promise.resolve();
+
+  return new Promise<void>((resolve, reject) => {
+    const cleanup = () => {
+      video.removeEventListener("loadedmetadata", handleLoaded);
+      video.removeEventListener("error", handleError);
+    };
+    const handleLoaded = () => {
+      cleanup();
+      resolve();
+    };
+    const handleError = () => {
+      cleanup();
+      reject(video.error ?? Error("video metadata is unavailable"));
+    };
+
+    video.addEventListener("loadedmetadata", handleLoaded, { once: true });
+    video.addEventListener("error", handleError, { once: true });
+  });
+}
+
+async function openCamera() {
+  const constraints: MediaStreamConstraints[] = [
+    { video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
+    { video: true, audio: false },
+  ];
+  let lastError: unknown;
+
+  for (const constraint of constraints) {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        return await navigator.mediaDevices.getUserMedia(constraint);
+      } catch (error) {
+        lastError = error;
+        if (!isNotReadableError(error)) throw error;
+        await sleep(500 * (attempt + 1));
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 function stripDataUrlPrefix(dataUrl: string) {
   return dataUrl.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "");
 }
@@ -144,6 +198,12 @@ export default function FacePaymentPage() {
   function stopCamera() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = undefined;
+
+    const video = videoRef.current;
+    if (video) {
+      video.pause();
+      video.srcObject = null;
+    }
   }
 
   const submitPayment = useCallback(async (content: string, input: PaymentInput) => {
@@ -204,10 +264,14 @@ export default function FacePaymentPage() {
       setDetecting(false);
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
-          audio: false,
-        });
+        if (!window.isSecureContext) {
+          throw Error("camera access requires localhost or HTTPS");
+        }
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw Error("navigator.mediaDevices.getUserMedia is unavailable");
+        }
+
+        const stream = await openCamera();
         if (!active) {
           stream.getTracks().forEach((track) => track.stop());
           return;
@@ -218,7 +282,12 @@ export default function FacePaymentPage() {
         if (!video) return;
 
         video.srcObject = stream;
-        await video.play();
+        await waitForVideoMetadata(video);
+        try {
+          await video.play();
+        } catch (error) {
+          throw Error(describeCameraError(error, "video.play"));
+        }
         setCameraReady(true);
         setDetecting(true);
 
@@ -252,8 +321,11 @@ export default function FacePaymentPage() {
         };
 
         timer = setTimeout(detect, 500);
-      } catch {
-        if (active) setCameraError("カメラを起動できませんでした。ブラウザのカメラ権限を確認してください。");
+      } catch (error) {
+        if (active) {
+          console.error(error);
+          setCameraError(`カメラを起動できませんでした。ブラウザのカメラ権限を確認してください。${describeCameraError(error, "camera")}`);
+        }
       }
     }
 
